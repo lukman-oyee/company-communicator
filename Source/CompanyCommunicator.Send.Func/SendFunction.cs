@@ -6,6 +6,7 @@
 namespace Microsoft.Teams.Apps.CompanyCommunicator.Send.Func
 {
     using System;
+    using System.Linq;
     using System.Threading.Tasks;
     using Microsoft.Azure.WebJobs;
     using Microsoft.Bot.Builder;
@@ -222,6 +223,21 @@ namespace Microsoft.Teams.Apps.CompanyCommunicator.Send.Func
             }
         }
 
+        //private async Task<IMessageActivity> GetMessageActivity(SendQueueMessageContent message)
+        //{
+        //    var notification = await this.notificationRepo.GetAsync(
+        //        NotificationDataTableNames.SendingNotificationsPartition,
+        //        message.NotificationId);
+
+        //    var adaptiveCardAttachment = new Attachment()
+        //    {
+        //        ContentType = AdaptiveCardContentType,
+        //        Content = JsonConvert.DeserializeObject(notification.Content),
+        //    };
+
+        //    return MessageFactory.Attachment(adaptiveCardAttachment);
+        //}
+
         private async Task<IMessageActivity> GetMessageActivity(SendQueueMessageContent message)
         {
             var notification = await this.notificationRepo.GetAsync(
@@ -234,7 +250,22 @@ namespace Microsoft.Teams.Apps.CompanyCommunicator.Send.Func
                 Content = JsonConvert.DeserializeObject(notification.Content),
             };
 
-            return MessageFactory.Attachment(adaptiveCardAttachment);
+            // return MessageFactory.Attachment(adaptiveCardAttachment);
+            var result = MessageFactory.Attachment(adaptiveCardAttachment);
+
+            AdaptiveCards.AdaptiveCard aCard = JsonConvert.DeserializeObject<AdaptiveCards.AdaptiveCard>(notification.Content);
+            var body = aCard.Body.FirstOrDefault();
+            if (body is AdaptiveCards.AdaptiveTextBlock)
+            {
+                result.Summary = ((AdaptiveCards.AdaptiveTextBlock)body).Text;
+            }
+
+            if (string.IsNullOrWhiteSpace(result.Summary))
+            {
+                result.Summary = result.Text ?? string.Empty;
+            }
+
+            return result;
         }
     }
 }
